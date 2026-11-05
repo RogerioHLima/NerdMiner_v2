@@ -435,7 +435,20 @@ String getPoolAPIUrl(void) {
     }
     return poolAPIUrl;
 }
-
+static bool poolDataValid = false;
+// Converte o hashrate do CKpool ("394K", "1.2M") em H/s
+static double parseCkHashrate(const String& s) {
+  if (s.length() == 0) return 0;
+  double v = s.toDouble();
+  switch (s.charAt(s.length() - 1)) {
+    case 'K': v *= 1e3;  break;
+    case 'M': v *= 1e6;  break;
+    case 'G': v *= 1e9;  break;
+    case 'T': v *= 1e12; break;
+    case 'P': v *= 1e15; break;
+  }
+  return v;
+}
 pool_data getPoolData(void){
     //pool_data pData;    
     if((mPoolUpdate == 0) || (millis() - mPoolUpdate > UPDATE_POOL_min * 60 * 1000)){      
@@ -456,6 +469,29 @@ pool_data getPoolData(void){
           int httpCode = http.GET();
           if (httpCode == HTTP_CODE_OK) {
               String payload = http.getString();
+                            // pool.nerdminers.org usa o formato do CKpool
+              if (poolAPIUrl.indexOf("pool.nerdminers.org") >= 0) {
+                StaticJsonDocument<200> ckFilter;
+                ckFilter["workers"] = true;
+                ckFilter["hashrate5m"] = true;
+                ckFilter["bestever"] = true;
+                StaticJsonDocument<512> ck;
+                DeserializationError err = deserializeJson(ck, payload, DeserializationOption::Filter(ckFilter));
+                if (!err) {
+                  pData.workersCount = ck["workers"].as<int>();
+                  char hs[16] = {0};
+                  suffix_string(parseCkHashrate(ck["hashrate5m"].as<String>()), hs, 16, 0);
+                  pData.workersHash = String(hs);
+                  char bd[16] = {0};
+                  suffix_string(ck["bestever"].as<double>(), bd, 16, 0);
+                  pData.bestDifficulty = String(bd);
+                  mPoolUpdate = millis();
+                  poolDataValid = true;
+                  Serial.println("\n####### Pool Data OK (nerdminers.org)!");
+                }
+                http.end();
+                return pData;
+              }
               // Serial.println(payload);
               StaticJsonDocument<300> filter;
               filter["bestDifficulty"] = true;
@@ -493,20 +529,25 @@ pool_data getPoolData(void){
               /* Serial.println(httpCode);
               String payload = http.getString();
               Serial.println(payload); */
-              // mPoolUpdate = millis();
-              pData.bestDifficulty = "P";
-              pData.workersHash = "E";
-              pData.workersCount = 0;
+              Serial.printf("Pool HTTP code=%d heap=%u\n", httpCode, ESP.getFreeHeap());
+              mPoolUpdate = millis();
+              if (!poolDataValid) {
+                pData.bestDifficulty = "P";
+                pData.workersHash = "E";
+                pData.workersCount = 0;
+              }
               http.end();
               return pData; 
           }
           http.end();
         } catch(...) {
           Serial.println("####### Pool Error!");          
-          // mPoolUpdate = millis();
-          pData.bestDifficulty = "P";
-          pData.workersHash = "Error";
-          pData.workersCount = 0;
+          mPoolUpdate = millis();
+          if (!poolDataValid) {
+            pData.bestDifficulty = "P";
+            pData.workersHash = "Error";
+            pData.workersCount = 0;
+          }
           http.end();
           return pData;
         } 
