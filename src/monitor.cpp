@@ -488,6 +488,9 @@ pool_data getPoolData(void){
                   mPoolUpdate = millis();
                   poolDataValid = true;
                   Serial.println("\n####### Pool Data OK (nerdminers.org)!");
+                } else {
+                  Serial.printf("Pool JSON error: %s\n", err.c_str());
+                  mPoolUpdate = millis();
                 }
                 http.end();
                 return pData;
@@ -530,7 +533,7 @@ pool_data getPoolData(void){
               String payload = http.getString();
               Serial.println(payload); */
               Serial.printf("Pool HTTP code=%d heap=%u\n", httpCode, ESP.getFreeHeap());
-              mPoolUpdate = millis();
+              mPoolUpdate = poolDataValid ? millis() : millis() - (UPDATE_POOL_min * 60UL * 1000UL) + random(60000, 120000);
               if (!poolDataValid) {
                 pData.bestDifficulty = "P";
                 pData.workersHash = "E";
@@ -542,7 +545,7 @@ pool_data getPoolData(void){
           http.end();
         } catch(...) {
           Serial.println("####### Pool Error!");          
-          mPoolUpdate = millis();
+          mPoolUpdate = poolDataValid ? millis() : millis() - (UPDATE_POOL_min * 60UL * 1000UL) + random(60000, 120000);
           if (!poolDataValid) {
             pData.bestDifficulty = "P";
             pData.workersHash = "Error";
