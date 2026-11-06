@@ -10,3 +10,6 @@ logs
 boards/ESP32_wroom_guide.md
 
 logs/
+
+*_factory.bin
+*_firmware.bin
