@@ -169,7 +169,18 @@ void printPoolData(){
             background.pushImage(0, -20, 320, 70, bottonPoolScreen_g);
             tft.pushImage(0,170,320,20,bottonPoolScreen_g);
           }
-                
+                    // Troca o rótulo "Public-Pool.io" pelo pool configurado
+          if (Settings.PoolAddress == "pool.nerdminers.org") {
+            const int16_t TAB_X = 105, TAB_Y = 171, TAB_W = 110, TAB_H = 18;
+            const uint16_t* img = bottomScreenBlue ? bottonPoolScreen : bottonPoolScreen_g;
+            uint16_t c = tft.color565(25, 30, 100);
+            tft.fillRoundRect(TAB_X, TAB_Y, TAB_W, TAB_H, 6, c);
+            tft.setTextFont(2);
+            tft.setTextDatum(MC_DATUM);
+            tft.setTextColor(TFT_WHITE);
+            tft.drawString("nerdminers.org", 160, TAB_Y + TAB_H / 2);
+            tft.drawString("nerdminers.org", 161, TAB_Y + TAB_H / 2);
+          }      
           render.setDrawer(background); // Link drawing object to background instance (so font will be rendered on background)
           render.setLineSpaceRatio(1);
           
